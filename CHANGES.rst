@@ -83,6 +83,12 @@ Changes
 
 Bugfixes
 --------
+- :class:`ToDatetime` now parses ``"Z"``-suffixed UTC timestamps and short
+  offsets such as ``"+02"`` on the polars backend, like it already did on the
+  pandas backend. Previously such columns were rejected and
+  :class:`TableVectorizer` one-hot encoded them as strings.
+  See :issue:`2454` by :user:`Tony Ya <tony1233200>`.
+
 - :class:`SessionEncoder` now preserves the index of pandas dataframes.
   Previously the output had a new ``RangeIndex``.
   :pr:`2448` by :user:`LolPanda2004 <LolPanda2004>`.

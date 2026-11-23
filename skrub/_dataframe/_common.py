@@ -950,6 +950,11 @@ def _to_datetime_polars(col, format, strict=True):
         # avoid ChronoFormatWarning due to pandas and polars writing this
         # differently.
         format = format.replace(".%f", "%.f")
+        # Chrono's strict %z does not accept "Z" or short offsets such as
+        # "+02", while pandas' %z does. Use the permissive %#z specifier,
+        # which accepts "Z", "+HH", "+HHMM" and "+HH:MM", so both backends
+        # parse the same strings. The guessed format_ is left unchanged.
+        format = format.replace("%z", "%#z")
         return col.str.to_datetime(format=format, strict=strict)
     except (pl.exceptions.ComputeError, pl.exceptions.InvalidOperationError) as e:
         raise ValueError("Failed to convert to datetime") from e

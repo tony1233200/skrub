@@ -127,6 +127,59 @@ def test_mixed_offsets(df_module):
     ]
 
 
+@skip_polars_installed_without_pyarrow
+@pytest.mark.parametrize(
+    "values, expected_iso",
+    [
+        (
+            ["2020-01-01T10:00:00Z", "2021-05-06T11:30:00Z"],
+            ["2020-01-01T10:00:00", "2021-05-06T11:30:00"],
+        ),
+        (
+            ["2020-01-01T10:00:00+02", "2021-05-06T11:30:00+02"],
+            ["2020-01-01T08:00:00", "2021-05-06T09:30:00"],
+        ),
+        (
+            [
+                "2020-01-01T10:00:00Z",
+                "2020-01-01T10:00:00+0200",
+                "2020-01-01T10:00:00+02:00",
+            ],
+            ["2020-01-01T10:00:00", "2020-01-01T08:00:00", "2020-01-01T08:00:00"],
+        ),
+    ],
+)
+def test_utc_z_and_short_offsets(df_module, values, expected_iso):
+    """``Z`` and short offsets such as ``+02`` are parsed on both backends.
+
+    Non-regression test for
+    https://github.com/skrub-data/skrub/issues/2454
+    """
+    s = df_module.make_column("when", values)
+    encoder = ToDatetime()
+    transformed = encoder.fit_transform(s)
+    assert encoder.format_ == "%Y-%m-%dT%H:%M:%S%z"
+    assert encoder.output_time_zone_ == "UTC"
+    assert to_iso(transformed) == expected_iso
+
+
+@skip_polars_installed_without_pyarrow
+def test_transform_z_after_fit_on_numeric_offset(df_module):
+    """Transforming ``Z`` strings after fitting on ``+0200`` gives values.
+
+    Non-regression test for
+    https://github.com/skrub-data/skrub/issues/2454
+    """
+    fit_col = df_module.make_column(
+        "when", ["2020-01-01T10:00:00+0200", "2021-05-06T11:30:00+0200"]
+    )
+    encoder = ToDatetime().fit(fit_col)
+    transformed = encoder.transform(
+        df_module.make_column("when", ["2020-01-01T10:00:00Z", "2021-05-06T11:30:00Z"])
+    )
+    assert to_iso(transformed) == ["2020-01-01T10:00:00", "2021-05-06T11:30:00"]
+
+
 def localize(df_module, dt_col, time_zone):
     if df_module.name == "pandas":
         return dt_col.dt.tz_localize(time_zone)
