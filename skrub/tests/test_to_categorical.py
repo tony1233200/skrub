@@ -15,7 +15,7 @@ def test_to_categorical(df_module):
     assert ToCategorical().fit(out).transform(out) is out
     # non-string, non-categorical columns are rejected
     f = df_module.make_column("c", [1.1, 2.2, None])
-    with pytest.raises(RejectColumn, match=".*only strings or only integers.*"):
+    with pytest.raises(RejectColumn, match=".*only strings, integers or booleans.*"):
         ToCategorical().fit(f)
     # default behaviour accepts string columns
     expected = sbd.to_categorical(s)
@@ -35,6 +35,15 @@ def test_to_categorical(df_module):
     df_module.assert_column_equal(
         ToCategorical(accept_int=True).fit(i).transform(i), expected
     )
+    # also accepts boolean columns if accept_int is True (#2462)
+    b = df_module.make_column("c", [True, False, None])
+    expected = sbd.to_categorical(b)
+    df_module.assert_column_equal(
+        ToCategorical(accept_int=True).fit_transform(b), expected
+    )
+    df_module.assert_column_equal(
+        ToCategorical(accept_int=True).fit(b).transform(b), expected
+    )
 
 
 @pytest.mark.parametrize(
@@ -43,6 +52,7 @@ def test_to_categorical(df_module):
         (False, [1.1, 2.2, None]),  # float rejected always
         (True, [1.1, 2.2, None]),  # float rejected always
         (False, [1, 2, None]),  # int rejected when accept_int=False
+        (False, [True, False, None]),  # bool rejected when accept_int=False
         ("Wrong", [1, 2, None]),  # wrong type rejected
     ],
 )

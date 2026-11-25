@@ -17,7 +17,8 @@ class ToCategorical(SingleColumnTransformer):
     accept_int : bool, default=False
         How to handle numeric columns. If ``False``, no numeric
         columns will be accepted. If ``True``, will convert integer
-        columns to categorical.
+        columns to categorical. Boolean columns are also accepted
+        when ``True``, as booleans are integers in Python.
 
     Notes
     -----
@@ -34,7 +35,9 @@ class ToCategorical(SingleColumnTransformer):
     column. Categorical columns are passed through.
 
     If ``accept_int`` is set to ``True``, then integer columns are also
-    accepted and converted to categorical. The default value is ``False``.
+    accepted and converted to categorical. Boolean columns are accepted
+    as well, as ``bool`` is a subclass of ``int``. The default value is
+    ``False``.
 
     Any other type of column is rejected by raising a ``RejectColumn``
     exception. **Note:** the ``TableVectorizer`` only sends string or
@@ -108,6 +111,15 @@ class ToCategorical(SingleColumnTransformer):
     1    2
     Name: c, dtype: category
     Categories (2, int64): [1, 2]
+
+    Boolean columns are accepted as well when ``accept_int`` is
+    ``True``:
+
+    >>> to_cat.fit_transform(pd.Series([True, False], name='c'))
+    0     True
+    1    False
+    Name: c, dtype: category
+    Categories (2, bool): [False, True]
 
     ``object`` columns that do not contain only strings are also rejected:
 
@@ -189,11 +201,13 @@ class ToCategorical(SingleColumnTransformer):
         self.all_outputs_ = [sbd.name(column)]
         if sbd.is_categorical(column):
             return column
-        if sbd.is_string(column) or (sbd.is_integer(column) and self.accept_int):
+        if sbd.is_string(column) or (
+            self.accept_int and (sbd.is_integer(column) or sbd.is_bool(column))
+        ):
             return sbd.to_categorical(column)
         raise RejectColumn(
-            f"Column {sbd.name(column)!r} does not contain only strings "
-            "or only integers (if accept_int is True)."
+            f"Column {sbd.name(column)!r} does not contain only strings, "
+            "integers or booleans (if accept_int is True)."
         )
 
     def transform(self, column):
